@@ -22,17 +22,17 @@ if ($proy <= 0 || $actividad <= 0 || $estado === '') {
     exit();
 }
 
-$justificacion = null;
-$inicio = null;
-$fin = null;
+$justificacion = "";
+$inicio = "";
+$fin = "";
 
 if ($estado === "Finalizada") {
-    $inicio = isset($_POST['inicio']) && $_POST['inicio'] !== '' ? trim((string)$_POST['inicio']) : null;
-    $fin = isset($_POST['fin']) && $_POST['fin'] !== '' ? trim((string)$_POST['fin']) : null;
+    $inicio = isset($_POST['inicio']) ? trim((string)$_POST['inicio']) : "";
+    $fin = isset($_POST['fin']) ? trim((string)$_POST['fin']) : "";
 } elseif ($estado === "En ejecución") {
-    $inicio = isset($_POST['inicio']) && $_POST['inicio'] !== '' ? trim((string)$_POST['inicio']) : null;
+    $inicio = isset($_POST['inicio']) ? trim((string)$_POST['inicio']) : "";
 } elseif ($estado === "No realizada") {
-    $justificacion = isset($_POST['just']) && $_POST['just'] !== '' ? trim((string)$_POST['just']) : null;
+    $justificacion = isset($_POST['just']) ? trim((string)$_POST['just']) : "";
 }
 
 // 1. Validar y procesar primero el archivo adjunto antes de insertar en BD
