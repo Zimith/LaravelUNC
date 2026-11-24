@@ -1,96 +1,93 @@
 <?php
-	
-	session_start();
-	if(isset($_SESSION["usuario"]) == FALSE){
-		header("location:./login.php");
-	}else{
-		$idUser= $_SESSION["id"];
-		//include_once("../Bibliotecas/dbUsuario.php");
-		include_once("../Bibliotecas/dbProyecto.php");
-		//$idProy = $_GET["id"];
-		$proy = $_POST["idProy"];
-		$actividad = $_POST['actividad'];
-		$fecha = date("Y-m-d");
-		$estado = $_POST['est'];
-		$observaciones = $_POST['obs'];
-		$justificacion = "";
-		$inicio = "";
-		$fin = "";
-		if ($estado == "Finalizada"){
-			$inicio = $_POST['inicio'];
-			$fin = $_POST['fin'];
-			
-		}elseif($estado == "En ejecución")
-			$inicio = $_POST['inicio'];
-		elseif($estado == "No realizada")
-			$justificacion = $_POST['just'];
-		$usuario = $idUser;
-		$proyecto = new Proyecto();
-		$proyecto->read($proy);
+session_start();
+if (!isset($_SESSION["usuario"], $_SESSION["id"])) {
+    header("Location: ./login.php");
+    exit();
+}
 
-		
-		include ("../Bibliotecas/dbAvance.php");
-		$a= new Avance();
-		
-		if(isset($_POST) && !empty($_POST)){
-			
-			// detalles del archivo subido
-			$fileTmpPath1 = $_FILES['fuenteV']['tmp_name'];
-			$fileName1 = $_FILES['fuenteV']['name'];
-			$fileSize1 = $_FILES['fuenteV']['size'];
-			$fileType1 = $_FILES['fuenteV']['type'];
-			$fileNameCmps1 = explode(".", $fileName1);
-			$fileExtension1 = strtolower(end($fileNameCmps1));
-			
-			$a->setProyecto($proy);
-			$a->setActividad($actividad);
-			$a->setFecha($fecha);
-			$a->setEstado($estado);
-			$a->setObservaciones($observaciones);
-			if ($justificacion != "")
-				$a->setJustificacion($justificacion);
-			$a->setUsuario($usuario);
-			if ($inicio != "")
-				$a->setInicio($inicio);
-			if ($fin != "")
-				$a->setFin($fin);
-			if ($fileName1 != "")
-				$a->setFuenteValidacion($fileName1);
-						
-			$res = $a->create();
-			//$id=$c->lastId();
-;
-			if($res){
-				$message= "Avance registrado con éxito";
-				$class="alert alert-success";
-			}else{
-				$message="No se pudo registrar el avance";
-				$class="alert alert-danger";
-			}
-			
-			// chequeo de las extensiones
-			if ($fileName1 != ""){
-				$allowedfileExtensions = array('jpg', 'pdf', 'docx', 'doc', 'xls', 'xlsx', 'zip', 'rar', 'jpeg', 'png');
-				if (in_array($fileExtension1, $allowedfileExtensions)){
-					$uploadFileDir = './fuenteValidacion/'.$idProy.'/';
-					$dest_path = $uploadFileDir . $fileName1;
-					
-					if (!file_exists($uploadFileDir)) {
-						mkdir($uploadFileDir, 0777, true);
-					}
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' || empty($_POST)) {
+    header("Location: ./main.php");
+    exit();
+}
 
-					if(move_uploaded_file($fileTmpPath1, $dest_path)){
-						$message .=' - Archivo subido exitosamente';
-						$class="alert alert-success";
-					}else{
-						$message .= ' - Error al subir el archivo.';
-						$class="alert alert-danger";
-					}
-				}else{
-					$message = 'Error al subir en archivo: El archivo debe tener alguno de la siguientes extensiones: ' . implode(',', $allowedfileExtensions);
-				}
-			}
-			header("location:./avanceCarga.php?id=".$proy."&msg=".$message."&class=".$class);
-		}
-	}
-?>
+$idUser = (int)$_SESSION["id"];
+$proy = isset($_POST["idProy"]) ? (int)$_POST["idProy"] : 0;
+$actividad = isset($_POST["actividad"]) ? (int)$_POST["actividad"] : 0;
+$estado = isset($_POST["est"]) ? trim((string)$_POST["est"]) : '';
+$observaciones = isset($_POST["obs"]) ? trim((string)$_POST["obs"]) : '';
+$fecha = date("Y-m-d");
+
+if ($proy <= 0 || $actividad <= 0 || $estado === '') {
+    header("Location: ./main.php");
+    exit();
+}
+
+$justificacion = null;
+$inicio = null;
+$fin = null;
+
+if ($estado === "Finalizada") {
+    $inicio = isset($_POST['inicio']) && $_POST['inicio'] !== '' ? trim((string)$_POST['inicio']) : null;
+    $fin = isset($_POST['fin']) && $_POST['fin'] !== '' ? trim((string)$_POST['fin']) : null;
+} elseif ($estado === "En ejecución") {
+    $inicio = isset($_POST['inicio']) && $_POST['inicio'] !== '' ? trim((string)$_POST['inicio']) : null;
+} elseif ($estado === "No realizada") {
+    $justificacion = isset($_POST['just']) && $_POST['just'] !== '' ? trim((string)$_POST['just']) : null;
+}
+
+// 1. Validar y procesar primero el archivo adjunto antes de insertar en BD
+$nombreArchivoFinal = "";
+$allowedExtensions = ['jpg', 'jpeg', 'png', 'pdf', 'docx', 'doc', 'xls', 'xlsx', 'zip', 'rar'];
+
+if (isset($_FILES['fuenteV']) && $_FILES['fuenteV']['error'] === UPLOAD_ERR_OK) {
+    $fileTmpPath = $_FILES['fuenteV']['tmp_name'];
+    $originalName = basename((string)$_FILES['fuenteV']['name']);
+    $fileExtension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+
+    if (!in_array($fileExtension, $allowedExtensions, true)) {
+        $msg = urlencode("Error: extensión no permitida. Use: " . implode(', ', $allowedExtensions));
+        header("Location: ./avanceCarga.php?id={$proy}&msg={$msg}&class=" . urlencode("alert alert-danger"));
+        exit();
+    }
+
+    // Corregido: usa $proy (antes usaba $idProy indefinido) y prefijo único para evitar sobrescrituras
+    $uploadFileDir = __DIR__ . '/fuenteValidacion/' . $proy . '/';
+    if (!is_dir($uploadFileDir)) {
+        mkdir($uploadFileDir, 0755, true);
+    }
+
+    $nombreSeguro = preg_replace('/[^a-zA-Z0-9._-]/', '_', $originalName);
+    $nombreArchivoFinal = date('Ymd_His') . '_' . $nombreSeguro;
+    $destPath = $uploadFileDir . $nombreArchivoFinal;
+
+    if (!move_uploaded_file($fileTmpPath, $destPath)) {
+        $msg = urlencode("Error al guardar el archivo en el servidor.");
+        header("Location: ./avanceCarga.php?id={$proy}&msg={$msg}&class=" . urlencode("alert alert-danger"));
+        exit();
+    }
+}
+
+// 2. Registrar el avance en la base de datos
+require_once __DIR__ . '/../Bibliotecas/dbAvance.php';
+$a = new Avance();
+$a->setProyecto($proy);
+$a->setActividad($actividad);
+$a->setFecha($fecha);
+$a->setEstado($estado);
+$a->setObservaciones($observaciones);
+$a->setJustificacion($justificacion);
+$a->setUsuario($idUser);
+$a->setInicio($inicio);
+$a->setFin($fin);
+$a->setFuenteValidacion($nombreArchivoFinal);
+
+if ($a->create()) {
+    $message = "Avance registrado con éxito";
+    $class = "alert alert-success";
+} else {
+    $message = "No se pudo registrar el avance en la base de datos";
+    $class = "alert alert-danger";
+}
+
+header("Location: ./avanceCarga.php?id={$proy}&msg=" . urlencode($message) . "&class=" . urlencode($class));
+exit();
