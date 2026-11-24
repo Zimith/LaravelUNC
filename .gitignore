@@ -1,2 +1,18 @@
-Base de datos/
+/vendor
+/node_modules
+/public/build
+/public/hot
+/public/storage
+/storage/*.key
+/storage/pail
+/bootstrap/cache/*.php
+/.env
+/.env.*
+!.env.example
+/auth.json
+/npm-debug.log
+/yarn-error.log
+/Base de datos/
 *.sql
+.phpunit.cache
+.phpunit.result.cache
