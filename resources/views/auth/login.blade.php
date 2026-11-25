@@ -28,8 +28,19 @@
                     <form id="request" class="main_form" action="{{ route('login.store') }}" method="post">
                         @csrf
                         <div class="row">
+                            @if ($errors->any())
+                                <div class="col-md-12">
+                                    <div class="alert alert-danger" role="alert">
+                                        <ul class="mb-0">
+                                            @foreach ($errors->all() as $error)
+                                                <li>{{ $error }}</li>
+                                            @endforeach
+                                        </ul>
+                                    </div>
+                                </div>
+                            @endif
                             <div class="col-md-12 ">
-                                <input class="login" placeholder="Usuario" type="text" name="user" id="user"><br><br>
+                                <input class="login" placeholder="Usuario" type="text" name="user" id="user" value="{{ old('user') }}"><br><br>
                             </div>
                             <div class="col-md-12">
                                 <input class="login" placeholder="Contraseña" type="password" name="pass" id="pass">

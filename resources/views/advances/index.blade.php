@@ -17,7 +17,9 @@
                 <div class="col-md-12">
                     <div class="titlepage text_align_center">
                         <a class="btn btn-primary" style="color: white;" href="{{ route('projects.show', $proyecto) }}">Volver al proyecto</a>
-                        <a class="btn btn-primary" style="color: white;" href="{{ route('projects.advances.create', $proyecto) }}">Carga de Avances</a>
+                        @if ((int) session('user_type') !== 6)
+                            <a class="btn btn-primary" style="color: white;" href="{{ route('projects.advances.create', $proyecto) }}">Carga de Avances</a>
+                        @endif
                         <a class="btn btn-primary" style="color: white;" href="{{ route('projects.reports.show', $proyecto) }}">Ver Informes de Avance</a>
                     </div>
                 </div>
